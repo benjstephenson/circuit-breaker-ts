@@ -1,15 +1,4 @@
-
-class Left<E> {
-  readonly _tag = 'left'
-  constructor(readonly error: E) { }
-}
-
-export class Right<A> {
-  readonly _tag = 'right'
-  constructor(readonly value: A) { }
-}
-
-type Either<E, A> = Left<E> | Right<A>
+import * as E from '@benjstephenson/kittens-ts/Either'
 
 class UnreachableCaseError extends Error {
   constructor(e: never) {
@@ -17,8 +6,8 @@ class UnreachableCaseError extends Error {
   }
 }
 
-export type CircuitBreaker = <A>(thunk: () => Promise<A>) => Promise<Either<string, A>>
-type CircuitResult<A> = Promise<[Either<string, A>, BreakerState]>
+export type CircuitBreaker = <A>(thunk: () => Promise<A>) => Promise<E.Either<string, A>>
+type CircuitResult<A> = Promise<[E.Either<string, A>, BreakerState]>
 type BreakerState = BreakerClosed | BreakerOpen
 
 class BreakerClosed {
@@ -62,9 +51,9 @@ const closedHandler = (config: CircuitBreakerConfig, dateTimeProvider: () => Dat
 ): CircuitResult<A> => {
   try {
     const result = await thunk()
-    return [new Right(result), new BreakerClosed(0)]
+    return [new E.Right(result), new BreakerClosed(0)]
   } catch (e) {
-    const error = new Left(`${config.description}: Error in call: ${e instanceof Error ? e.message : 'unknown'}`)
+    const error = new E.Left<string, A>(`${config.description}: Error in call: ${e instanceof Error ? e.message : 'unknown'}`)
     const newState = incrementErrorCount(config, dateTimeProvider)(state)
     return Promise.resolve([error, newState])
   }
@@ -82,7 +71,7 @@ const openHandler = (config: CircuitBreakerConfig, dateTimeProvider: () => Date)
   return canaryCall
     ? closedHandler(config, dateTimeProvider)(breakerState, thunk)
     : Promise.resolve([
-      new Left(
+      new E.Left<string, A>(
         `${config.description}: circuit breaker is waiting to reset`
       ),
       breakerState,

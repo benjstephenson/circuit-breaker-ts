@@ -32,10 +32,10 @@ describe('Circuit Breaker', () => {
     const breaker = circuitBreakerSingleton(config, () => dateTime)
     await breaker(mockThunk.object)
     const result = await breaker(mockThunk.object)
-    if (result._tag === 'left')
+    if (result.tag === 'Left')
       return fail('Unexpected left')
 
-    assertThat(result.value).is(1)
+    assertThat(result.get()).is(1)
   })
 
   it('continues to execute while error count has not exceeded threshold', async () => {
@@ -53,8 +53,8 @@ describe('Circuit Breaker', () => {
     await breaker(mockThunk.object)
     const result = await breaker(mockThunk.object)
 
-    if (result._tag === 'left')
-      return assertThat(result.error).is(`${config.description}: Error in call: oops`)
+    if (result.tag === 'Left')
+      return assertThat(result.get()).is(`${config.description}: Error in call: oops`)
 
     return fail()
   })
@@ -71,8 +71,8 @@ describe('Circuit Breaker', () => {
     await breaker(mockThunk.object)
     const result = await breaker(mockThunk.object)
 
-    if (result._tag === 'left')
-      return assertThat(result.error).is(`${config.description}: circuit breaker is waiting to reset`)
+    if (result.tag === 'Left')
+      return assertThat(result.get()).is(`${config.description}: circuit breaker is waiting to reset`)
 
     return fail()
   })
@@ -95,9 +95,9 @@ describe('Circuit Breaker', () => {
     mockDateProvider.setup(f => f()).returns(() => new Date(dateTime.setMinutes(dateTime.getMinutes() + 1)))
     const result = await breaker(mockThunk.object)
 
-    if (result._tag === 'left')
+    if (result.tag === 'Left')
       return fail()
 
-    assertThat(result.value).is(1)
+    assertThat(result.get()).is(1)
   })
 })

@@ -9,3 +9,4 @@ Useful for protecting calls to external services that may experience an outage.
 
 A convenience function that returns a singleton is available so that an instance can be built at app startup and injected into services.
     
+Inspired by a great blog post on [circuit breakers in the functional world ](https://levelup.gitconnected.com/circuit-breaker-in-a-functional-world-9c555c8e9527?gi=bf0edfcf31bd)

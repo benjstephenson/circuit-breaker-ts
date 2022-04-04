@@ -1,7 +1,7 @@
 {
   "name": "@benjstephenson/circuit-breaker-ts",
   "version": "0.0.1",
-  "description": "",
+  "description": "Small circuit breaker implementation to wrap a lazy thunk",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "repository": {

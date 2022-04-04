@@ -1,4 +1,4 @@
-import * as E from '@benjstephenson/kittens-ts/Either'
+import * as E from 'kittens-ts/Either'
 
 class UnreachableCaseError extends Error {
   constructor(e: never) {
@@ -12,12 +12,12 @@ type BreakerState = BreakerClosed | BreakerOpen
 
 class BreakerClosed {
   public readonly _type = 'Closed'
-  constructor(public readonly errorCount: number) { }
+  constructor(public readonly errorCount: number) {}
 }
 
 class BreakerOpen {
   public readonly _type = 'Open'
-  constructor(readonly timeTripped: number) { }
+  constructor(readonly timeTripped: number) {}
 }
 
 type Milliseconds = number
@@ -28,9 +28,7 @@ export interface CircuitBreakerConfig {
   description: string
 }
 
-const incrementErrorCount = (config: CircuitBreakerConfig, dateTimeProvider: () => Date) => (
-  state: BreakerState
-) => {
+const incrementErrorCount = (config: CircuitBreakerConfig, dateTimeProvider: () => Date) => (state: BreakerState) => {
   switch (state._type) {
     case 'Closed':
       if (state.errorCount >= config.errorThreshold) return new BreakerOpen(dateTimeProvider().valueOf())
@@ -45,57 +43,51 @@ const incrementErrorCount = (config: CircuitBreakerConfig, dateTimeProvider: () 
   }
 }
 
-const closedHandler = (config: CircuitBreakerConfig, dateTimeProvider: () => Date) => async <A>(
-  state: BreakerState,
-  thunk: () => Promise<A>
-): CircuitResult<A> => {
-  try {
-    const result = await thunk()
-    return [new E.Right(result), new BreakerClosed(0)]
-  } catch (e) {
-    const error = new E.Left<string, A>(`${config.description}: Error in call: ${e instanceof Error ? e.message : 'unknown'}`)
-    const newState = incrementErrorCount(config, dateTimeProvider)(state)
-    return Promise.resolve([error, newState])
+const closedHandler =
+  (config: CircuitBreakerConfig, dateTimeProvider: () => Date) =>
+  async <A>(state: BreakerState, thunk: () => Promise<A>): CircuitResult<A> => {
+    try {
+      const result = await thunk()
+      return [new E.Right(result), new BreakerClosed(0)]
+    } catch (e) {
+      const error = new E.Left<string, A>(
+        `${config.description}: Error in call: ${e instanceof Error ? e.message : 'unknown'}`
+      )
+      const newState = incrementErrorCount(config, dateTimeProvider)(state)
+      return Promise.resolve([error, newState])
+    }
   }
-}
 
-const openHandler = (config: CircuitBreakerConfig, dateTimeProvider: () => Date) => <A>(
-  state: BreakerOpen,
-  thunk: () => Promise<A>
-): CircuitResult<A> => {
-  const [canaryCall, breakerState] =
-    state.timeTripped + config.resetTimeout < dateTimeProvider().valueOf()
-      ? [true, new BreakerOpen(dateTimeProvider().valueOf())]
-      : [false, state]
+const openHandler =
+  (config: CircuitBreakerConfig, dateTimeProvider: () => Date) =>
+  <A>(state: BreakerOpen, thunk: () => Promise<A>): CircuitResult<A> => {
+    const [canaryCall, breakerState] =
+      state.timeTripped + config.resetTimeout < dateTimeProvider().valueOf()
+        ? [true, new BreakerOpen(dateTimeProvider().valueOf())]
+        : [false, state]
 
-  return canaryCall
-    ? closedHandler(config, dateTimeProvider)(breakerState, thunk)
-    : Promise.resolve([
-      new E.Left<string, A>(
-        `${config.description}: circuit breaker is waiting to reset`
-      ),
-      breakerState,
-    ])
-}
-
-const circuitBreaker = (config: CircuitBreakerConfig, dateTimeProvider: () => Date) => <A>(
-  state: BreakerState,
-  thunk: () => Promise<A>
-): CircuitResult<A> => {
-  switch (state._type) {
-    case 'Closed':
-      return closedHandler(config, dateTimeProvider)(state, thunk)
-    case 'Open':
-      return openHandler(config, dateTimeProvider)(state, thunk)
-    default:
-      throw new UnreachableCaseError(state)
+    return canaryCall
+      ? closedHandler(config, dateTimeProvider)(breakerState, thunk)
+      : Promise.resolve([
+          new E.Left<string, A>(`${config.description}: circuit breaker is waiting to reset`),
+          breakerState,
+        ])
   }
-}
 
-export const circuitBreakerSingleton = (
-  config: CircuitBreakerConfig,
-  dateTimeProvider: () => Date
-): CircuitBreaker => {
+const circuitBreaker =
+  (config: CircuitBreakerConfig, dateTimeProvider: () => Date) =>
+  <A>(state: BreakerState, thunk: () => Promise<A>): CircuitResult<A> => {
+    switch (state._type) {
+      case 'Closed':
+        return closedHandler(config, dateTimeProvider)(state, thunk)
+      case 'Open':
+        return openHandler(config, dateTimeProvider)(state, thunk)
+      default:
+        throw new UnreachableCaseError(state)
+    }
+  }
+
+export const circuitBreakerSingleton = (config: CircuitBreakerConfig, dateTimeProvider: () => Date): CircuitBreaker => {
   let state: BreakerState = new BreakerClosed(0)
   const service = circuitBreaker(config, dateTimeProvider)
 

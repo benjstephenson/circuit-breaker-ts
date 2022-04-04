@@ -25,17 +25,16 @@ describe('Circuit Breaker', () => {
     const dateTime = new Date(Date.now())
 
     mockThunk
-      .setup(t => t())
+      .setup((t) => t())
       .returns(() => Promise.resolve(1))
       .times(2)
 
     const breaker = circuitBreakerSingleton(config, () => dateTime)
     await breaker(mockThunk.object)
     const result = await breaker(mockThunk.object)
-    if (result.tag === 'Left')
-      return fail('Unexpected left')
+    if (result.tag === 'Left') throw new Error('Unexpected left')
 
-    assertThat(result.get()).is(1)
+    assertThat(result.value).is(1)
   })
 
   it('continues to execute while error count has not exceeded threshold', async () => {
@@ -46,17 +45,16 @@ describe('Circuit Breaker', () => {
     }
 
     mockThunk
-      .setup(t => t())
+      .setup((t) => t())
       .returns(() => Promise.reject(new Error('oops')))
       .times(2)
     const breaker = circuitBreakerSingleton(config, () => dateTime)
     await breaker(mockThunk.object)
     const result = await breaker(mockThunk.object)
 
-    if (result.tag === 'Left')
-      return assertThat(result.get()).is(`${config.description}: Error in call: oops`)
+    if (result.tag === 'Left') return assertThat(result.value).is(`${config.description}: Error in call: oops`)
 
-    return fail()
+    throw new Error(`Unexpected right value`)
   })
 
   it('stops executing when error count exceeds threshold', async () => {
@@ -66,15 +64,15 @@ describe('Circuit Breaker', () => {
       resetTimeout: 1000,
     }
 
-    mockThunk.setup(t => t()).returns(() => Promise.reject(new Error('oops')))
+    mockThunk.setup((t) => t()).returns(() => Promise.reject(new Error('oops')))
     const breaker = circuitBreakerSingleton(config, () => dateTime)
     await breaker(mockThunk.object)
     const result = await breaker(mockThunk.object)
 
     if (result.tag === 'Left')
-      return assertThat(result.get()).is(`${config.description}: circuit breaker is waiting to reset`)
+      return assertThat(result.value).is(`${config.description}: circuit breaker is waiting to reset`)
 
-    return fail()
+    throw new Error(`Unexpected right value`)
   })
 
   it('recovers when the reset timeout has elapsed', async () => {
@@ -84,20 +82,18 @@ describe('Circuit Breaker', () => {
       resetTimeout: 1000,
     }
 
-
     const breaker = circuitBreakerSingleton(config, mockDateProvider.object)
 
-    mockThunk.setup(t => t()).returns(() => Promise.reject(new Error('oops')))
-    mockDateProvider.setup(f => f()).returns(() => dateTime)
+    mockThunk.setup((t) => t()).returns(() => Promise.reject(new Error('oops')))
+    mockDateProvider.setup((f) => f()).returns(() => dateTime)
     await breaker(mockThunk.object)
 
-    mockThunk.setup(t => t()).returns(() => Promise.resolve(1))
-    mockDateProvider.setup(f => f()).returns(() => new Date(dateTime.setMinutes(dateTime.getMinutes() + 1)))
+    mockThunk.setup((t) => t()).returns(() => Promise.resolve(1))
+    mockDateProvider.setup((f) => f()).returns(() => new Date(dateTime.setMinutes(dateTime.getMinutes() + 1)))
     const result = await breaker(mockThunk.object)
 
-    if (result.tag === 'Left')
-      return fail()
+    if (result.tag === 'Left') throw new Error(`Unexpected left value`)
 
-    assertThat(result.get()).is(1)
+    assertThat(result.value).is(1)
   })
 })

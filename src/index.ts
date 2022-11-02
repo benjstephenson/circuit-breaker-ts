@@ -1,4 +1,4 @@
-import * as E from 'kittens-ts/Either'
+import * as E from './Either'
 
 class UnreachableCaseError extends Error {
   constructor(e: never) {
@@ -48,9 +48,9 @@ const closedHandler =
   async <A>(state: BreakerState, thunk: () => Promise<A>): CircuitResult<A> => {
     try {
       const result = await thunk()
-      return [new E.Right(result), new BreakerClosed(0)]
+      return [E.right(result), new BreakerClosed(0)]
     } catch (e) {
-      const error = new E.Left<string, A>(
+      const error = E.left(
         `${config.description}: Error in call: ${e instanceof Error ? e.message : 'unknown'}`
       )
       const newState = incrementErrorCount(config, dateTimeProvider)(state)
@@ -69,7 +69,7 @@ const openHandler =
     return canaryCall
       ? closedHandler(config, dateTimeProvider)(breakerState, thunk)
       : Promise.resolve([
-          new E.Left<string, A>(`${config.description}: circuit breaker is waiting to reset`),
+          E.left<string>(`${config.description}: circuit breaker is waiting to reset`),
           breakerState,
         ])
   }

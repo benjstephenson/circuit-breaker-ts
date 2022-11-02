@@ -1,4 +1,4 @@
 import { CircuitBreaker } from './index'
-import { Right } from 'kittens-ts/Either'
+import { right } from './Either'
 
-export const mockCircuitBreaker: CircuitBreaker = (t) => t().then((r) => new Right(r))
+export const mockCircuitBreaker: CircuitBreaker = (t) => t().then((r) => right(r))
